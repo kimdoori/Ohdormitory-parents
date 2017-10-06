@@ -9,6 +9,7 @@ import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -32,17 +33,22 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         final TelephonyManager mgr = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-        mgr.listen(new PhoneStateListener(){
-            @Override
-            public void onCallStateChanged(int state, String incomingNumber) {
-                String myNumber=mgr.getLine1Number();
-                myNumber = myNumber.replace("+82", "0");
 
-                Log.e("내 전화번호",myNumber);
-                getSleepOutInfo(myNumber);
-                super.onCallStateChanged(state, incomingNumber);
-            }
-        },PhoneStateListener.LISTEN_CALL_STATE);
+            mgr.listen(new PhoneStateListener() {
+                @Override
+                public void onCallStateChanged(int state, String incomingNumber) {
+                    try {
+                    String myNumber = mgr.getLine1Number();
+                    myNumber = myNumber.replace("+82", "0");
+                    Log.e("내 전화번호", myNumber);
+                    getSleepOutInfo(myNumber);
+                    }catch(Exception e){
+                        Toast.makeText(MainActivity.this, "앱 설정에서 전화 권한부여를 해주세요.", Toast.LENGTH_LONG).show();
+                    }
+
+                    super.onCallStateChanged(state, incomingNumber);
+                }
+            }, PhoneStateListener.LISTEN_CALL_STATE);
 
 
     }
@@ -50,7 +56,7 @@ public class MainActivity extends Activity {
     public void generateRQCode(String contents) {
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
         try {
-            Bitmap bitmap = toBitmap(qrCodeWriter.encode(contents, BarcodeFormat.QR_CODE, 350, 350));
+            Bitmap bitmap = toBitmap(qrCodeWriter.encode(contents, BarcodeFormat.QR_CODE, 150, 150));
             ((ImageView) findViewById(R.id.iv_generated_qrcode)).setImageBitmap(bitmap);
         } catch (WriterException e) {
             e.printStackTrace();
@@ -86,7 +92,8 @@ public class MainActivity extends Activity {
                     DataSnapshot sleepOut = sleepOutIterator.next();
                     String sleepOutDate = sleepOut.getKey();
                     Log.e("외박 날짜",sleepOutDate);
-                    String send=sleepOut.child("send").getValue(String.class);
+                    String send = sleepOut.child("send").getValue(String.class);
+                    if(send==null) send="false";
                     Iterator<DataSnapshot> sleepOutStudentIterator = sleepOut.getChildren().iterator();
                     while (sleepOutStudentIterator.hasNext()) {
                         DataSnapshot sleepOutStudent = sleepOutStudentIterator.next();
@@ -98,8 +105,9 @@ public class MainActivity extends Activity {
 
                             Log.e("부모님 번호", parentNumber);
                             if (myNumber.equals(parentNumber)) {//기기 번호와 부모번호가 같으면
-                                Log.e("기기번호와 부모번호가 같으면", "헤헤");
-                                String qrcodeContent = sleepOutDate + studentKey;
+                                Log.e("기기번호와 부모번호가 같으면", "큐얼코드 생성");
+                                String qrcodeContent = sleepOutDate +"/"+ studentKey;
+                                Log.e("qr",qrcodeContent);
                                 generateRQCode(qrcodeContent);
                                 break;
                             }
