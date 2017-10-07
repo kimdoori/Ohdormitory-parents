@@ -1,21 +1,27 @@
 package kr.hs.emirim.doori.ohdormitoryparents;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+import android.view.View;
 import android.widget.ImageView;
-import android.widget.Toast;
+import android.widget.TextView;
 
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
@@ -23,35 +29,70 @@ import com.google.zxing.qrcode.QRCodeWriter;
 
 import java.util.Iterator;
 
+import kr.hs.emirim.doori.ohdormitoryparents.FCM.FirebaseInstanceIDService;
+
 public class MainActivity extends Activity {
 
     private FirebaseDatabase mDatabase;
     String myNumber;
+    TextView textView;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        FirebaseMessaging.getInstance().subscribeToTopic("parentNotice");
+
+        textView=(TextView)findViewById(R.id.text_none_qrcode);
+
+        checkCallPermission();
+
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onResume();
+        checkCallPermission();
+    }
+
+    public void checkCallPermission(){
         final TelephonyManager mgr = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
 
-            mgr.listen(new PhoneStateListener() {
-                @Override
-                public void onCallStateChanged(int state, String incomingNumber) {
-                    try {
+        mgr.listen(new PhoneStateListener() {
+            @Override
+            public void onCallStateChanged(int state, String incomingNumber) {
+                try {
                     String myNumber = mgr.getLine1Number();
                     myNumber = myNumber.replace("+82", "0");
                     Log.e("내 전화번호", myNumber);
+
+                    FirebaseInstanceIDService f=new FirebaseInstanceIDService();
+                    f.sendRegistrationToServer(myNumber);
+
                     getSleepOutInfo(myNumber);
-                    }catch(Exception e){
-                        Toast.makeText(MainActivity.this, "앱 설정에서 전화 권한부여를 해주세요.", Toast.LENGTH_LONG).show();
-                    }
+                }catch(Exception e){
 
-                    super.onCallStateChanged(state, incomingNumber);
+                    final Dialog mDialog = new Dialog(MainActivity.this,R.style.MyDialog);
+                    mDialog.setContentView(R.layout.dialog);
+                    ((TextView)mDialog.findViewById(R.id.dialog_text)).setText("앱 설정에서 전화 권한을 부여해주세요.");
+                    mDialog.findViewById(R.id.dialog_button_yes).setOnClickListener(new View.OnClickListener(){
+                        @Override
+                        public void onClick(View view) {
+                            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                    .setData(Uri.parse("package:" + MainActivity.this.getPackageName()));
+                            MainActivity.this.startActivity(intent);
+                            mDialog.dismiss();
+                        }
+                    });
+                    mDialog.show();
                 }
-            }, PhoneStateListener.LISTEN_CALL_STATE);
 
+                super.onCallStateChanged(state, incomingNumber);
+            }
+        }, PhoneStateListener.LISTEN_CALL_STATE);
 
     }
+
 
     public void generateRQCode(String contents) {
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
@@ -95,6 +136,7 @@ public class MainActivity extends Activity {
                     String send = sleepOut.child("send").getValue(String.class);
                     if(send==null) send="false";
                     Iterator<DataSnapshot> sleepOutStudentIterator = sleepOut.getChildren().iterator();
+                    String qrcodeContent=null;
                     while (sleepOutStudentIterator.hasNext()) {
                         DataSnapshot sleepOutStudent = sleepOutStudentIterator.next();
                         String studentKey = sleepOutStudent.getKey();
@@ -106,11 +148,16 @@ public class MainActivity extends Activity {
                             Log.e("부모님 번호", parentNumber);
                             if (myNumber.equals(parentNumber)) {//기기 번호와 부모번호가 같으면
                                 Log.e("기기번호와 부모번호가 같으면", "큐얼코드 생성");
-                                String qrcodeContent = sleepOutDate +"/"+ studentKey;
+                                qrcodeContent= sleepOutDate +"/"+ studentKey;
                                 Log.e("qr",qrcodeContent);
                                 generateRQCode(qrcodeContent);
                                 break;
                             }
+                            if(qrcodeContent==null){
+                                textView.setText("자녀의 외박 신청이 없습니다.");
+                            }
+
+
                         }
                     }
                 }

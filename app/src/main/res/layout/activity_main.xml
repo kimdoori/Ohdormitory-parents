@@ -7,6 +7,12 @@
     android:background="@drawable/qrcodebackground"
     tools:context="kr.hs.emirim.doori.ohdormitoryparents.MainActivity">
 
+    <TextView
+        android:id="@+id/text_none_qrcode"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"/>
     <ImageView
         android:id="@+id/iv_generated_qrcode"
         android:layout_width="150dp"
