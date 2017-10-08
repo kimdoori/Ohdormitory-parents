@@ -66,8 +66,8 @@ public class MainActivity extends Activity {
                     myNumber = myNumber.replace("+82", "0");
                     Log.e("내 전화번호", myNumber);
 
-                    FirebaseInstanceIDService f=new FirebaseInstanceIDService();
-                    f.sendRegistrationToServer(myNumber);
+                    FirebaseInstanceIDService fcmIDservice=new FirebaseInstanceIDService();
+                    fcmIDservice.sendRegistrationToServer(myNumber);
 
                     getSleepOutInfo(myNumber);
                 }catch(Exception e){
