@@ -1,6 +1,5 @@
 package kr.hs.emirim.doori.ohdormitoryparents;
 
-import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
@@ -31,7 +30,7 @@ import java.util.Iterator;
 
 import kr.hs.emirim.doori.ohdormitoryparents.FCM.FirebaseInstanceIDService;
 
-public class MainActivity extends Activity {
+public class MainActivity extends BaseActivity {
 
     private FirebaseDatabase mDatabase;
     String myNumber;
@@ -46,7 +45,6 @@ public class MainActivity extends Activity {
         textView=(TextView)findViewById(R.id.text_none_qrcode);
 
         checkCallPermission();
-
     }
 
     @Override
@@ -91,10 +89,11 @@ public class MainActivity extends Activity {
             }
         }, PhoneStateListener.LISTEN_CALL_STATE);
 
+        hideProgressDialog();
     }
 
 
-    public void generateRQCode(String contents) {
+    public void generateQRCode(String contents) {
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
         try {
             Bitmap bitmap = toBitmap(qrCodeWriter.encode(contents, BarcodeFormat.QR_CODE, 150, 150));
@@ -124,6 +123,7 @@ public class MainActivity extends Activity {
 
         final DatabaseReference sleepOutRef = mDatabase.getReference("sleep-out");
 
+        showProgressDialog();
         ValueEventListener sleepOutListener = new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot sleepOutData) {
@@ -150,17 +150,20 @@ public class MainActivity extends Activity {
                                 Log.e("기기번호와 부모번호가 같으면", "큐얼코드 생성");
                                 qrcodeContent= sleepOutDate +"/"+ studentKey;
                                 Log.e("qr",qrcodeContent);
-                                generateRQCode(qrcodeContent);
-                                break;
-                            }
-                            if(qrcodeContent==null){
-                                textView.setText("자녀의 외박 신청이 없습니다.");
-                            }
+                                generateQRCode(qrcodeContent);
 
-
+                                String [] dates = sleepOutDate.split("-");
+                                ((TextView)findViewById(R.id.guideText)).setText(dates[0]+"."+dates[1]+"."+dates[2]+". - "+ dates[3] +"."+dates[4]+"."+dates[5]+"\n\n외박인증 큐알코드입니다.");
+                            }
                         }
                     }
+                    if(qrcodeContent==null){
+                        Log.e("TAG", "HERE >3<");
+                        textView.setText("자녀의 외박 신청이 없습니다.");
+                        ((TextView)findViewById(R.id.guideText)).setText("");
+                    }
                 }
+                hideProgressDialog();
             }
             @Override
             public void onCancelled(DatabaseError databaseError) {

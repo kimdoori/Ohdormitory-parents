@@ -24,7 +24,9 @@
             </intent-filter>
         </service>
         <activity
-            android:name=".MainActivity"/>
+            android:name=".MainActivity"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
 
         <activity android:name=".IntroActivity" >
             <intent-filter>
