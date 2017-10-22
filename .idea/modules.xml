@@ -4,8 +4,6 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/OhDormitoryParents.iml" filepath="$PROJECT_DIR$/OhDormitoryParents.iml" />
       <module fileurl="file://$PROJECT_DIR$/Ohdormitory-parents.iml" filepath="$PROJECT_DIR$/Ohdormitory-parents.iml" />
-      <module fileurl="file://$PROJECT_DIR$/Ohdormitory-parents.iml" filepath="$PROJECT_DIR$/Ohdormitory-parents.iml" />
-      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>
