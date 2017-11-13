@@ -26,6 +26,9 @@ import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Iterator;
 
 import kr.hs.emirim.doori.ohdormitoryparents.FCM.FirebaseInstanceIDService;
@@ -35,6 +38,11 @@ public class MainActivity extends BaseActivity {
     private FirebaseDatabase mDatabase;
     String myNumber;
     TextView textView;
+
+   ImageView qrImage;
+    private String maxDate="2000.1.1";
+    private String maxFBdate;
+    private boolean alreadyRecognize=false;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -43,6 +51,7 @@ public class MainActivity extends BaseActivity {
         FirebaseMessaging.getInstance().subscribeToTopic("parentNotice");
 
         textView=(TextView)findViewById(R.id.text_none_qrcode);
+        qrImage=(ImageView) findViewById(R.id.iv_generated_qrcode);
 
         checkCallPermission();
     }
@@ -97,7 +106,7 @@ public class MainActivity extends BaseActivity {
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
         try {
             Bitmap bitmap = toBitmap(qrCodeWriter.encode(contents, BarcodeFormat.QR_CODE, 150, 150));
-            ((ImageView) findViewById(R.id.iv_generated_qrcode)).setImageBitmap(bitmap);
+            qrImage.setImageBitmap(bitmap);
         } catch (WriterException e) {
             e.printStackTrace();
         }
@@ -129,13 +138,17 @@ public class MainActivity extends BaseActivity {
             public void onDataChange(DataSnapshot sleepOutData) {
                 Iterator<DataSnapshot> sleepOutIterator = sleepOutData.getChildren().iterator();
                 //users의 모든 자식들의 key값과 value 값들을 iterator로 참조
+                //TODO :외박날짜 최근꺼 가져와서..
                 while(sleepOutIterator.hasNext()) {
                     DataSnapshot sleepOut = sleepOutIterator.next();
                     String sleepOutDate = sleepOut.getKey();
-                    Log.e("외박 날짜",sleepOutDate);
-                    String send = sleepOut.child("send").getValue(String.class);
+                    checkDate(sleepOutDate);
+                }
+
+                String send = sleepOutData.child(maxFBdate).child("send").getValue(String.class);
                     if(send==null) send="false";
-                    Iterator<DataSnapshot> sleepOutStudentIterator = sleepOut.getChildren().iterator();
+
+                    Iterator<DataSnapshot> sleepOutStudentIterator = sleepOutData.child(maxFBdate).getChildren().iterator();
                     String qrcodeContent=null;
                     while (sleepOutStudentIterator.hasNext()) {
                         DataSnapshot sleepOutStudent = sleepOutStudentIterator.next();
@@ -143,26 +156,43 @@ public class MainActivity extends BaseActivity {
 
                         if(!studentKey.equals("send") && send.equals("true")) {
                             String parentNumber = sleepOutStudent.child("parentNumber").getValue(String.class);
+                            String  recognize= sleepOutStudent.child("recognize").getValue(String.class);
                             parentNumber = parentNumber.replace("-", "");
 
-                            Log.e("부모님 번호", parentNumber);
-                            if (myNumber.equals(parentNumber)) {//기기 번호와 부모번호가 같으면
-                                Log.e("기기번호와 부모번호가 같으면", "큐얼코드 생성");
-                                qrcodeContent= sleepOutDate +"/"+ studentKey;
-                                Log.e("qr",qrcodeContent);
-                                generateQRCode(qrcodeContent);
+                                Log.e("부모님 번호", parentNumber);
+                                if (myNumber.equals(parentNumber)) {//기기 번호와 부모번호가 같으면
+                                    Log.e("기기번호와 부모번호가 같으면", "큐얼코드 생성");
+                                    if (recognize.equals("true")) {
+                                        Log.e("qr", "이미 인증하셨습니다");
+                                        textView.setVisibility(View.VISIBLE);
+                                        qrImage.setVisibility(View.GONE);
+                                        textView.setText("이미 인증하셨습니다.");
+                                        alreadyRecognize=true;
+                                    } else {
 
-                                String [] dates = sleepOutDate.split("-");
-                                ((TextView)findViewById(R.id.guideText)).setText(dates[0]+"."+dates[1]+"."+dates[2]+". - "+ dates[3] +"."+dates[4]+"."+dates[5]+"\n\n외박인증 큐알코드입니다.");
+                                        qrcodeContent = maxFBdate + "/" + studentKey;
+
+
+                                        qrImage.setVisibility(View.VISIBLE);
+                                        textView.setVisibility(View.GONE);
+                                        Log.e("qr", qrcodeContent);
+                                        generateQRCode(qrcodeContent);
+
+                                        String[] dates = maxFBdate.split("-");
+                                        ((TextView) findViewById(R.id.guideText)).setText(dates[0] + "." + dates[1] + "." + dates[2] + ". - " + dates[3] + "." + dates[4] + "." + dates[5] + "\n\n외박인증 큐알코드입니다.");
+                                    }
+                                }
                             }
-                        }
+
                     }
-                    if(qrcodeContent==null){
+                    if(qrcodeContent==null && !alreadyRecognize){
                         Log.e("TAG", "HERE >3<");
+                        textView.setVisibility(View.VISIBLE);
                         textView.setText("자녀의 외박 신청이 없습니다.");
+                        qrImage.setVisibility(View.GONE);
                         ((TextView)findViewById(R.id.guideText)).setText("");
                     }
-                }
+
                 hideProgressDialog();
             }
             @Override
@@ -170,8 +200,38 @@ public class MainActivity extends BaseActivity {
             }
         };
         sleepOutRef.addValueEventListener(sleepOutListener);
+    }
 
+    //TODO : 제일최근날짜체크
+    public void checkDate(String fbDate) {
+        String simpleFBDate=fbDate.replaceFirst("-",".");
+        simpleFBDate=simpleFBDate.replaceFirst("-",".");
 
+        int index = simpleFBDate.indexOf("-");
+        simpleFBDate = simpleFBDate.substring(0,index);
+
+        Log.e("파베 저장되있는 i날짜",simpleFBDate);
+        Log.e("maxDate",maxDate);
+
+        try{
+            SimpleDateFormat format = new SimpleDateFormat("yyyy.MM.dd");
+            Date max = format.parse(maxDate);
+
+            Date fb = format.parse(simpleFBDate);
+
+            long calDate = max.getTime() - fb.getTime();
+
+            // Date.getTime() 은 해당날짜를 기준으로1970년 00:00:00 부터 몇 초가 흘렀는지를 반환해준다.
+            // 이제 24*60*60*1000(각 시간값에 따른 차이점) 을 나눠주면 일수가 나온다.
+            long calDateDays = calDate / ( 24*60*60*1000);
+            if(calDateDays <= 0) {//max가 더 빠르다면
+                maxDate=simpleFBDate;
+                maxFBdate=fbDate;
+            }
+
+        } catch (ParseException e) {
+            Log.e("날짜 파싱에러","서로 타입이 맞지 않음.");
+        }
 
     }
 
